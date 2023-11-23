@@ -11,3 +11,4 @@ To run the code in this repository, you will need to have the download the packa
 Run `conda env create -f env.yml` in the terminal
 Run `conda activate weather_env`
 Run `python download_dataset.py` to download the `jena_climate_2009_2016.csv` and `jena_climate_2009_2016.csv.zip` files for the dataset, the zipped file can be deleted.
+Run `python main.py`
