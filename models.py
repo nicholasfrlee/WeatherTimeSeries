@@ -1,8 +1,9 @@
-from typing import Tuple
+from pathlib import Path
+import os
+from typing import Tuple, Dict
 from sklearn.metrics import mean_squared_error
-import tensorflow as tf
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import *
+from tensorflow.keras.layers import LSTM, Dense, InputLayer, GRU
 from tensorflow.keras.callbacks import ModelCheckpoint
 from tensorflow.keras.losses import MeanSquaredError
 from tensorflow.keras.metrics import RootMeanSquaredError
@@ -12,14 +13,16 @@ from tensorflow.keras.models import load_model
 import numpy as np
 import pandas as pd
 
+from utilities import Dataset
+
 
 def build_lstm_model_1() -> Sequential:
     """Build and return the first model architecture."""
     model = Sequential()
-    model.add(InputLayer((5, 1)))
+    model.add(InputLayer(input_shape=(5, 1)))
     model.add(LSTM(64))
-    model.add(Dense(8, "relu"))
-    model.add(Dense(1, "linear"))
+    model.add(Dense(8, activation="relu"))
+    model.add(Dense(1, activation="linear"))
     return model
 
 
@@ -33,17 +36,18 @@ def build_lstm_model_2() -> Sequential:
     return model
 
 
-def build_lstm_model3() -> Sequential:
+def build_lstm_model_3() -> Sequential:
     """Build and return a model with softmax activation."""
     model = Sequential()
     model.add(InputLayer((5, 1)))
     model.add(LSTM(64))
     model.add(Dense(8, activation="relu"))
     model.add(Dense(4, activation="softmax"))
+    model.add(Dense(1, "linear"))
     return model
 
 
-def build_lstm_model4() -> Sequential:
+def build_lstm_model_4() -> Sequential:
     """Build and return the fourth model architecture."""
     model = Sequential()
     model.add(InputLayer((5, 1)))
@@ -69,6 +73,7 @@ def build_gru_model1() -> Sequential:
 
 def compile_and_train_model(
     model: Sequential,
+    model_name: str,
     X_train: np.ndarray,
     y_train: np.ndarray,
     X_val: np.ndarray,
@@ -77,7 +82,7 @@ def compile_and_train_model(
     epochs: int,
 ) -> Sequential:
     """Compile and train a Keras Sequential model."""
-    cp = ModelCheckpoint("model/", save_best_only=True)
+    cp = ModelCheckpoint(f"saved_models/{model_name}", save_best_only=True)
     model.compile(
         loss=MeanSquaredError(),
         optimizer=Adam(learning_rate=learning_rate),
@@ -92,17 +97,20 @@ def compile_and_train_model(
 def load_or_train_model(
     model_name, build_model_func, X_train, y_train, X_val, y_val, learning_rate, epochs
 ):
+    save_path = Path("saved_models") / model_name
     try:
-        trained_model = load_model(model_name)
+        trained_model = load_model(save_path)
         print(f"Pre-trained {model_name} model loaded successfully.")
     except OSError:
         print(f"Pre-existing {model_name} model not found. Training model.")
         model = build_model_func()
         trained_model = compile_and_train_model(
-            model, X_train, y_train, X_val, y_val, learning_rate, epochs
+            model, model_name, X_train, y_train, X_val, y_val, learning_rate, epochs
         )
-        trained_model.save(model_name)
+        trained_model.save(save_path)
         print(f"{model_name} model trained and saved.")
+    finally:
+        assert save_path.is_dir()
     return trained_model
 
 
@@ -125,11 +133,12 @@ def evaluate_model(
     return results, rmse
 
 
-def train_evaluate_models(models, dataset, LEARNING_RATE):
+def train_evaluate_models(models: Dict, dataset: Dataset, LEARNING_RATE: int):
     model_results = []
-    for i, model in enumerate(models):
+    for i, model in enumerate(models.keys()):
+        model_name = models[model]
         trained_model = load_or_train_model(
-            f"model{i}/",
+            f"{model_name}/",
             model,
             dataset.X_train,
             dataset.y_train,
@@ -149,7 +158,7 @@ def train_evaluate_models(models, dataset, LEARNING_RATE):
         )
         model_results.append(
             {
-                "model number": i,
+                "model name": model_name,
                 "train": model_train_rmse,
                 "val": model_val_rmse,
                 "test": model_test_rmse,

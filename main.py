@@ -1,15 +1,11 @@
-import tensorflow as tf
-import os
 import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
 
 from utilities import df_to_X_y, Dataset
 
 from models import (
     build_lstm_model_1,
     build_lstm_model_2,
-    build_lstm_model3,
+    build_lstm_model_3,
     build_gru_model1,
     train_evaluate_models,
 )
@@ -30,12 +26,12 @@ def main():
         X1[:60000], y1[:60000], X1[60000:65000], y1[60000:65000], X1[65000:], y1[65000:]
     )
 
-    models_to_train = [
-        build_lstm_model_1,
-        build_lstm_model_2,
-        build_lstm_model3,
-        build_gru_model1,
-    ]
+    models_to_train = {
+        build_lstm_model_1: "lstm_1",
+        build_lstm_model_2: "lstm_2",
+        build_lstm_model_3: "lstm_3",
+        build_gru_model1: "gru_1",
+    }
 
     model_results = train_evaluate_models(
         models_to_train, sample_dataset, LEARNING_RATE
