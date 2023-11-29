@@ -1,6 +1,7 @@
 from pathlib import Path
 import os
-from typing import Tuple, Dict
+import pickle
+from typing import Tuple, Dict, List
 from sklearn.metrics import mean_squared_error
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense, InputLayer, GRU
@@ -88,18 +89,36 @@ def compile_and_train_model(
         optimizer=Adam(learning_rate=learning_rate),
         metrics=[RootMeanSquaredError()],
     )
-    model.fit(
+    history = model.fit(
         X_train, y_train, validation_data=(X_val, y_val), epochs=epochs, callbacks=[cp]
     )
+    pickle_save_path = (
+        Path("saved_models") / model_name / "history.pickle"
+    )
+
+    with open(pickle_save_path, "wb") as handle:
+        pickle.dump(history, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
     return model
 
 
 def load_or_train_model(
-    model_name, build_model_func, X_train, y_train, X_val, y_val, learning_rate, epochs
+    model_name: str,
+    build_model_func,
+    X_train: List[float],
+    y_train: List[float],
+    X_val: List[float],
+    y_val: List[float],
+    learning_rate: float,
+    epochs: int,
+    train_override: bool,
 ):
     save_path = Path("saved_models") / model_name
     try:
+        if train_override:
+            raise OSError
         trained_model = load_model(save_path)
+
         print(f"Pre-trained {model_name} model loaded successfully.")
     except OSError:
         print(f"Pre-existing {model_name} model not found. Training model.")
@@ -110,8 +129,11 @@ def load_or_train_model(
         trained_model.save(save_path)
         print(f"{model_name} model trained and saved.")
     finally:
-        assert save_path.is_dir()
-    return trained_model
+        pickle_save_path = save_path / "history.pickle"
+        with open(pickle_save_path, "rb") as handle:
+            trained_model_history = pickle.load(handle)
+
+    return trained_model, trained_model_history
 
 
 def get_prediction_results(
@@ -133,11 +155,20 @@ def evaluate_model(
     return results, rmse
 
 
-def train_evaluate_models(models: Dict, dataset: Dataset, LEARNING_RATE: int):
+def train_evaluate_models(
+    models: Dict,
+    dataset: Dataset,
+    LEARNING_RATE: float,
+    epochs: int,
+    train_override: bool,
+) -> pd.DataFrame:
+    """
+    Trains all models specified in a function : model_name dictionary and outputs a dataframe with the results over epochs
+    """
     model_results = []
     for i, model in enumerate(models.keys()):
         model_name = models[model]
-        trained_model = load_or_train_model(
+        trained_model, trained_model_history = load_or_train_model(
             f"{model_name}/",
             model,
             dataset.X_train,
@@ -145,8 +176,11 @@ def train_evaluate_models(models: Dict, dataset: Dataset, LEARNING_RATE: int):
             dataset.X_val,
             dataset.y_val,
             LEARNING_RATE,
-            epochs=10,
+            epochs,
+            train_override,
         )
+
+        # Evaluate on train, val, and test sets after training completion
         model_train_results, model_train_rmse = evaluate_model(
             trained_model, dataset.X_train, dataset.y_train
         )
@@ -158,10 +192,16 @@ def train_evaluate_models(models: Dict, dataset: Dataset, LEARNING_RATE: int):
         )
         model_results.append(
             {
-                "model name": model_name,
-                "train": model_train_rmse,
-                "val": model_val_rmse,
-                "test": model_test_rmse,
+                "model_name": model_name,
+                "train_rmse": model_train_rmse,
+                "val_rmse": model_val_rmse,
+                "test_rmse": model_test_rmse,
+                "losses": trained_model_history.history["loss"],
+                "rmses": trained_model_history.history["root_mean_squared_error"],
+                "val_losses": trained_model_history.history["val_loss"],
+                "val_rmses": trained_model_history.history["val_root_mean_squared_error"],
+                "epochs_trained": len(trained_model_history.history["loss"])
             }
         )
-    return model_results
+
+    return pd.DataFrame(model_results)
