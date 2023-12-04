@@ -5,12 +5,9 @@ import matplotlib.pyplot as plt
 from utilities import df_to_X_y, Dataset, plot_variable_comparison
 
 from models import (
-    build_lstm_model_1,
-    build_lstm_model_2,
-    build_lstm_model_3,
-    build_lstm_model_4,
-    build_gru_model1,
-    train_evaluate_models,
+    Model,
+    TensorFlowModel,
+    train_evaluate_models
 )
 
 
@@ -38,21 +35,18 @@ def main():
     )
 
     models_to_train = {
-        build_lstm_model_1: "lstm_1",
-        build_lstm_model_2: "lstm_2",
-        build_lstm_model_3: "lstm_3",
-        build_lstm_model_4: "lstm_4",
-        build_gru_model1: "gru_1",
+        TensorFlowModel.build_lstm_model_1(): "lstm_1",
+        TensorFlowModel.build_lstm_model_2(): "lstm_2",
+        TensorFlowModel.build_lstm_model_3(): "lstm_3",
+        TensorFlowModel.build_lstm_model_4(): "lstm_4",
+        TensorFlowModel.build_gru_model1(): "gru_1",
     }
 
     model_results_df = train_evaluate_models(
         models_to_train, sample_dataset, LEARNING_RATE, EPOCHS, train_override=False
     )
 
-    plot_variable_comparison(model_results_df, "losses", EPOCHS, len(models_to_train))
-    plot_variable_comparison(
-        model_results_df, "val_losses", EPOCHS, len(models_to_train)
-    )
+    plot_variable_comparison(model_results_df, ["losses","val_losses"], EPOCHS, len(models_to_train))
 
 
 if __name__ == "__main__":

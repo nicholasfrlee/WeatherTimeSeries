@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, List
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -27,14 +27,21 @@ def df_to_X_y(df: pd.DataFrame, window_size: int = 5) -> Tuple[np.ndarray, np.nd
     return np.array(X), np.array(y)
 
 
-def plot_variable_comparison(df: pd.DataFrame, y_variable: str, epochs: int, num_models: int):
-    plt.plot(np.arange(epochs), df[y_variable][0])
-    for i in range(num_models):
-        plt.plot(np.arange(epochs), df[y_variable][i], label=df["model_name"][i])
+def plot_variable_comparison(
+    df: pd.DataFrame, y_variables: List[str], epochs: int, num_models: int
+):
+    for y_variable in y_variables:
+        plt.plot(np.arange(epochs), df[y_variable][0])
+        for i in range(num_models):
+            label = df["model_name"][i]
+            plt.plot(
+                np.arange(epochs), df[y_variable][i], label=f"{label} : {y_variable}"
+            )
     plt.xlabel("Epoch")
     plt.ylabel(y_variable)
     plt.legend()
     plt.grid()
-    plt.title(f"Plot for {y_variable}")
+    title = ", ".join(y_variables)
+    plt.title(f"Plot for {title}")
     plt.show()
     return
