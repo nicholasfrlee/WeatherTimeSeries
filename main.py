@@ -7,13 +7,12 @@ from utilities import df_to_X_y, Dataset, plot_variable_comparison
 from models import (
     Model,
     TensorFlowModel,
-    train_evaluate_models
 )
 
 
 def main():
     WINDOW_SIZE = 5
-    EPOCHS = 20
+    EPOCHS = 6
     LEARNING_RATE = 0.0001
 
     physical_devices = tf.config.list_physical_devices("GPU")
@@ -33,20 +32,27 @@ def main():
     sample_dataset = Dataset(
         X1[:60000], y1[:60000], X1[60000:65000], y1[60000:65000], X1[65000:], y1[65000:]
     )
+    lstm_model_1 = TensorFlowModel("LSTM1")
+    lstm_model_2 = TensorFlowModel("LSTM2")
+    lstm_model_3 = TensorFlowModel("LSTM3")
+    lstm_model_4 = TensorFlowModel("LSTM4")
+    gru_model1 = TensorFlowModel("GRU1")
 
     models_to_train = {
-        TensorFlowModel.build_lstm_model_1(): "lstm_1",
-        TensorFlowModel.build_lstm_model_2(): "lstm_2",
-        TensorFlowModel.build_lstm_model_3(): "lstm_3",
-        TensorFlowModel.build_lstm_model_4(): "lstm_4",
-        TensorFlowModel.build_gru_model1(): "gru_1",
+        lstm_model_1: "LSTM1",
+        lstm_model_2: "LSTM2",
+        lstm_model_3: "LSTM3",
+        lstm_model_4: "LSTM4",
+        gru_model1: "GRU1",
     }
 
-    model_results_df = train_evaluate_models(
+    model_results_df = Model.train_evaluate_models(
         models_to_train, sample_dataset, LEARNING_RATE, EPOCHS, train_override=False
     )
 
-    plot_variable_comparison(model_results_df, ["losses","val_losses"], EPOCHS, len(models_to_train))
+    plot_variable_comparison(
+        model_results_df, ["losses", "val_losses"], EPOCHS, len(models_to_train)
+    )
 
 
 if __name__ == "__main__":
